@@ -146,10 +146,11 @@ export class OrganizersService {
     }
 
     if (search) {
-      where.organizationName = {
-        contains: search,
-        mode: 'insensitive',
-      };
+      where.OR = [
+        { organizationName: { contains: search, mode: 'insensitive' } },
+        { user: { name: { contains: search, mode: 'insensitive' } } },
+        { user: { email: { contains: search, mode: 'insensitive' } } },
+      ];
     }
 
     const [total, items] = await Promise.all([
