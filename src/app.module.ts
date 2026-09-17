@@ -8,6 +8,9 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { OrganizersModule } from './modules/organizers/organizers.module';
 import { HealthModule } from './modules/health/health.module';
+import { EventCategoriesModule } from './modules/event-categories/event-categories.module';
+import { VenuesModule } from './modules/venues/venues.module';
+import { EventsModule } from './modules/events/events.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 
@@ -21,6 +24,9 @@ import { RolesGuard } from './common/guards/roles.guard';
     UsersModule,
     OrganizersModule,
     HealthModule,
+    EventCategoriesModule,
+    VenuesModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [
