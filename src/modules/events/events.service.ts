@@ -10,6 +10,7 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { QueryEventDto } from './dto/query-event.dto';
 import { UpdateEventStatusDto } from './dto/update-event-status.dto';
+import { CreateSessionDto, UpdateSessionDto } from './dto/create-session.dto';
 import { EventStatus, OrganizerStatus, Prisma } from '@internal/prisma/ems';
 
 @Injectable()
@@ -54,6 +55,28 @@ export class EventsService {
     },
     venue: true,
     category: true,
+    sessions: {
+      select: {
+        id: true,
+        eventId: true,
+        speakerId: true,
+        title: true,
+        description: true,
+        startTime: true,
+        endTime: true,
+        roomOrTrack: true,
+        speaker: {
+          select: {
+            id: true,
+            name: true,
+            bio: true,
+            company: true,
+            photo: true,
+          },
+        },
+      },
+      orderBy: { startTime: 'asc' as const },
+    },
   };
 
   /**
@@ -88,6 +111,52 @@ export class EventsService {
   }
 
   /**
+   * Check venue booking availability for a date/time range
+   */
+  async checkVenueAvailabilityPublic(
+    venueId: string,
+    start: Date,
+    end: Date,
+    excludeEventId?: string,
+  ) {
+    const where: Prisma.EventWhereInput = {
+      venueId,
+      status: { not: EventStatus.CANCELLED },
+      startDatetime: { lt: end },
+      endDatetime: { gt: start },
+    };
+
+    if (excludeEventId) {
+      where.id = { not: excludeEventId };
+    }
+
+    const overlappingEvent = await this.eventModel.findFirst({
+      where,
+      select: {
+        id: true,
+        title: true,
+        startDatetime: true,
+        endDatetime: true,
+      },
+    });
+
+    if (overlappingEvent) {
+      const startStr = overlappingEvent.startDatetime.toLocaleString('id-ID');
+      const endStr = overlappingEvent.endDatetime.toLocaleString('id-ID');
+      return {
+        available: false,
+        message: `Venue ini sudah dibooking untuk event "${overlappingEvent.title}" (${startStr} s/d ${endStr}). Silakan pilih venue atau rentang waktu lain.`,
+        overlappingEvent,
+      };
+    }
+
+    return {
+      available: true,
+      message: 'Venue tersedia untuk rentang waktu tersebut.',
+    };
+  }
+
+  /**
    * Create a new event
    */
   async create(userId: string, createDto: CreateEventDto) {
@@ -100,6 +169,17 @@ export class EventsService {
       throw new BadRequestException(
         'Event start date/time must be earlier than end date/time',
       );
+    }
+
+    if (createDto.venueId) {
+      const availability = await this.checkVenueAvailabilityPublic(
+        createDto.venueId,
+        startDate,
+        endDate,
+      );
+      if (!availability.available) {
+        throw new ConflictException(availability.message);
+      }
     }
 
     let slug = this.generateSlug(createDto.title);
@@ -310,20 +390,31 @@ export class EventsService {
     }
     if (updateDto.status) dataToUpdate.status = updateDto.status;
 
-    if (updateDto.startDatetime || updateDto.endDatetime) {
-      const start = new Date(
-        updateDto.startDatetime || existing.data.startDatetime,
+    const start = new Date(
+      updateDto.startDatetime || existing.data.startDatetime,
+    );
+    const end = new Date(updateDto.endDatetime || existing.data.endDatetime);
+
+    if (start >= end) {
+      throw new BadRequestException(
+        'Event start date/time must be earlier than end date/time',
       );
-      const end = new Date(updateDto.endDatetime || existing.data.endDatetime);
+    }
 
-      if (start >= end) {
-        throw new BadRequestException(
-          'Event start date/time must be earlier than end date/time',
-        );
+    dataToUpdate.startDatetime = start;
+    dataToUpdate.endDatetime = end;
+
+    const targetVenueId = updateDto.venueId !== undefined ? updateDto.venueId : existing.data.venueId;
+    if (targetVenueId) {
+      const availability = await this.checkVenueAvailabilityPublic(
+        targetVenueId,
+        start,
+        end,
+        id,
+      );
+      if (!availability.available) {
+        throw new ConflictException(availability.message);
       }
-
-      dataToUpdate.startDatetime = start;
-      dataToUpdate.endDatetime = end;
     }
 
     const updatedEvent = await this.eventModel.update({

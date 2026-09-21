@@ -92,6 +92,35 @@ export class EventsController {
     };
   }
 
+  @Get('check-venue-availability')
+  @ApiOperation({ summary: 'Check if a venue is available for a given date/time range' })
+  async checkVenueAvailability(
+    @Query('venueId') venueId: string,
+    @Query('startDatetime') startDatetime: string,
+    @Query('endDatetime') endDatetime: string,
+    @Query('excludeEventId') excludeEventId?: string,
+  ) {
+    if (!venueId || !startDatetime || !endDatetime) {
+      throw new BadRequestException(
+        'venueId, startDatetime, and endDatetime are required',
+      );
+    }
+
+    const start = new Date(startDatetime);
+    const end = new Date(endDatetime);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start >= end) {
+      throw new BadRequestException('Invalid date/time range');
+    }
+
+    return this.eventsService.checkVenueAvailabilityPublic(
+      venueId,
+      start,
+      end,
+      excludeEventId,
+    );
+  }
+
   @Post()
   @ApiOperation({ summary: 'Create a new event (Approved Organizers only)' })
   @ApiResponse({ status: 201, description: 'Event created successfully' })
@@ -164,4 +193,5 @@ export class EventsController {
     return this.eventsService.updateStatus(currentUser.sub, id, updateStatusDto);
   }
 }
+
 
