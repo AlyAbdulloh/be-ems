@@ -13,6 +13,7 @@ import { VenuesModule } from './modules/venues/venues.module';
 import { EventsModule } from './modules/events/events.module';
 import { SpeakersModule } from './modules/speakers/speakers.module';
 import { EventSessionsModule } from './modules/event-sessions/event-sessions.module';
+import { TicketTypesModule } from './modules/ticket-types/ticket-types.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 
@@ -31,6 +32,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     EventsModule,
     SpeakersModule,
     EventSessionsModule,
+    TicketTypesModule,
   ],
   controllers: [AppController],
   providers: [

@@ -77,6 +77,21 @@ export class EventsService {
       },
       orderBy: { startTime: 'asc' as const },
     },
+    ticketTypes: {
+      select: {
+        id: true,
+        eventId: true,
+        name: true,
+        price: true,
+        quota: true,
+        soldCount: true,
+        saleStartDate: true,
+        saleEndDate: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: { price: 'asc' as const },
+    },
   };
 
   /**
