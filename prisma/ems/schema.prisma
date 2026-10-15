@@ -17,6 +17,11 @@ enum RoleName {
   ADMIN
 }
 
+enum EventPricingType {
+  FREE
+  PAID
+}
+
 enum OrganizerStatus {
   PENDING
   APPROVED
@@ -166,23 +171,24 @@ model EventCategory {
 }
 
 model Event {
-  id            String         @id @default(uuid()) @db.Uuid
-  organizerId   String         @map("organizer_id") @db.Uuid
-  organizer     Organizer      @relation(fields: [organizerId], references: [id])
-  venueId       String?        @map("venue_id") @db.Uuid
-  venue         Venue?         @relation(fields: [venueId], references: [id])
-  categoryId    String?        @map("category_id") @db.Uuid
-  category      EventCategory? @relation(fields: [categoryId], references: [id])
-  title         String         @db.VarChar(200)
-  slug          String         @unique @db.VarChar(220)
-  description   String?        @db.Text
-  bannerImage   String?        @map("banner_image") @db.VarChar(500)
-  startDatetime DateTime       @map("start_datetime")
-  endDatetime   DateTime       @map("end_datetime")
-  status        EventStatus    @default(DRAFT)
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
-  deletedAt     DateTime?      @map("deleted_at")
+  id            String           @id @default(uuid()) @db.Uuid
+  organizerId   String           @map("organizer_id") @db.Uuid
+  organizer     Organizer        @relation(fields: [organizerId], references: [id])
+  venueId       String?          @map("venue_id") @db.Uuid
+  venue         Venue?           @relation(fields: [venueId], references: [id])
+  categoryId    String?          @map("category_id") @db.Uuid
+  category      EventCategory?   @relation(fields: [categoryId], references: [id])
+  title         String           @db.VarChar(200)
+  slug          String           @unique @db.VarChar(220)
+  description   String?          @db.Text
+  bannerImage   String?          @map("banner_image") @db.VarChar(500)
+  startDatetime DateTime         @map("start_datetime")
+  endDatetime   DateTime         @map("end_datetime")
+  status        EventStatus      @default(DRAFT)
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  deletedAt     DateTime?        @map("deleted_at")
+  pricingType   EventPricingType @default(FREE) @map("pricing_type")
 
   sessions      EventSession[]
   ticketTypes   TicketType[]

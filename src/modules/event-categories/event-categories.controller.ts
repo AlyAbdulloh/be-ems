@@ -12,6 +12,7 @@ import { EventCategoriesService } from './event-categories.service';
 import { CreateEventCategoryDto } from './dto/create-event-category.dto';
 import { UpdateEventCategoryDto } from './dto/update-event-category.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { RoleName } from '@internal/prisma/ems';
 import {
   ApiTags,
@@ -39,6 +40,7 @@ export class EventCategoriesController {
     return this.eventCategoriesService.create(createDto);
   }
 
+  @Public()
   @Get()
   @ApiOperation({ summary: 'Get all event categories' })
   @ApiResponse({ status: 200, description: 'List of event categories' })
@@ -46,6 +48,7 @@ export class EventCategoriesController {
     return this.eventCategoriesService.findAll();
   }
 
+  @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Get event category by ID' })
   @ApiResponse({ status: 200, description: 'Event category details' })

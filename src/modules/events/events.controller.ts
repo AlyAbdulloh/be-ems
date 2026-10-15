@@ -21,6 +21,7 @@ import { UpdateEventDto } from './dto/update-event.dto';
 import { QueryEventDto } from './dto/query-event.dto';
 import { UpdateEventStatusDto } from './dto/update-event-status.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import {
   ApiTags,
   ApiOperation,
@@ -144,6 +145,7 @@ export class EventsController {
     return this.eventsService.findMyEvents(currentUser.sub, query);
   }
 
+  @Public()
   @Get()
   @ApiOperation({ summary: 'Get all public or filtered events' })
   @ApiResponse({ status: 200, description: 'List of public events' })
@@ -151,6 +153,7 @@ export class EventsController {
     return this.eventsService.findAll(query);
   }
 
+  @Public()
   @Get('slug/:slug')
   @ApiOperation({ summary: 'Get event details by unique slug' })
   @ApiResponse({ status: 200, description: 'Event details' })
@@ -159,6 +162,7 @@ export class EventsController {
     return this.eventsService.findBySlug(slug);
   }
 
+  @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Get event details by ID' })
   @ApiResponse({ status: 200, description: 'Event details' })

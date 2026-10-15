@@ -8,7 +8,7 @@ import {
   IsUUID,
   MaxLength,
 } from 'class-validator';
-import { EventStatus } from '@internal/prisma/ems';
+import { EventPricingType, EventStatus } from '@internal/prisma/ems';
 
 export class CreateEventDto {
   @ApiProperty({
@@ -77,4 +77,13 @@ export class CreateEventDto {
   @IsOptional()
   @IsEnum(EventStatus)
   status?: EventStatus = EventStatus.DRAFT;
+
+  @ApiPropertyOptional({
+    description: 'Pricing type of the event (FREE or PAID)',
+    enum: EventPricingType,
+    default: EventPricingType.FREE,
+  })
+  @IsOptional()
+  @IsEnum(EventPricingType)
+  pricingType?: EventPricingType = EventPricingType.FREE;
 }

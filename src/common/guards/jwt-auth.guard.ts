@@ -31,7 +31,7 @@ export class JwtAuthGuard implements CanActivate {
     }
     try {
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: process.env.JWT_SECRET || 'danain_super_secret_jwt_key_2026',
+        secret: process.env.JWT_SECRET,
       });
       // Attach user to request object
       request['user'] = payload;
@@ -50,6 +50,7 @@ export class JwtAuthGuard implements CanActivate {
 
     // 2. Try to extract from cookies
     if (request.cookies && request.cookies['access_token']) {
+      console.log("token dari cookie", request.cookies['access_token'])
       return request.cookies['access_token'];
     }
 

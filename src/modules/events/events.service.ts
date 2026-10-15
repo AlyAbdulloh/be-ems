@@ -11,11 +11,11 @@ import { UpdateEventDto } from './dto/update-event.dto';
 import { QueryEventDto } from './dto/query-event.dto';
 import { UpdateEventStatusDto } from './dto/update-event-status.dto';
 import { CreateSessionDto, UpdateSessionDto } from './dto/create-session.dto';
-import { EventStatus, OrganizerStatus, Prisma } from '@internal/prisma/ems';
+import { EventPricingType, EventStatus, OrganizerStatus, Prisma } from '@internal/prisma/ems';
 
 @Injectable()
 export class EventsService {
-  constructor(private readonly emsDb: EmsPrismaService) {}
+  constructor(private readonly emsDb: EmsPrismaService) { }
 
   get eventModel() {
     return this.emsDb.event;
@@ -37,6 +37,7 @@ export class EventsService {
     startDatetime: true,
     endDatetime: true,
     status: true,
+    pricingType: true,
     createdAt: true,
     updatedAt: true,
     organizer: {
@@ -223,6 +224,7 @@ export class EventsService {
         startDatetime: startDate,
         endDatetime: endDate,
         status: createDto.status || EventStatus.DRAFT,
+        pricingType: createDto.pricingType || EventPricingType.FREE,
       },
       select: this.defaultSelect,
     });
@@ -239,7 +241,7 @@ export class EventsService {
   async findMyEvents(userId: string, query: QueryEventDto) {
     const organizer = await this.getApprovedOrganizer(userId);
 
-    const { page = 1, limit = 10, status, categoryId, search } = query;
+    const { page = 1, limit = 10, status, categoryId, search, pricingType } = query;
     const skip = (page - 1) * limit;
 
     const where: Prisma.EventWhereInput = {
@@ -248,6 +250,10 @@ export class EventsService {
 
     if (status) {
       where.status = status;
+    }
+
+    if (pricingType) {
+      where.pricingType = pricingType;
     }
 
     if (categoryId) {
@@ -290,7 +296,17 @@ export class EventsService {
    * Find public or all events with pagination
    */
   async findAll(query: QueryEventDto) {
-    const { page = 1, limit = 10, status, categoryId, venueId, search } = query;
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      categoryId,
+      venueId,
+      venueType,
+      city,
+      pricingType,
+      search,
+    } = query;
     const skip = (page - 1) * limit;
 
     const where: Prisma.EventWhereInput = {};
@@ -299,12 +315,34 @@ export class EventsService {
       where.status = status;
     }
 
+    if (pricingType) {
+      where.pricingType = pricingType;
+    }
+
     if (categoryId) {
       where.categoryId = categoryId;
     }
 
     if (venueId) {
       where.venueId = venueId;
+    }
+
+    if (venueType) {
+      where.venue = {
+        ...(where.venue as any),
+        type: venueType,
+      };
+    }
+
+    if (city) {
+      where.venue = {
+        ...(where.venue as any),
+        OR: [
+          { city: { contains: city, mode: 'insensitive' } },
+          { name: { contains: city, mode: 'insensitive' } },
+          { address: { contains: city, mode: 'insensitive' } },
+        ],
+      };
     }
 
     if (search) {
@@ -392,7 +430,7 @@ export class EventsService {
 
     if (updateDto.title) dataToUpdate.title = updateDto.title;
     if (updateDto.description !== undefined) dataToUpdate.description = updateDto.description;
-    if (updateDto.bannerImage !== undefined) dataToUpdate.bannerImage = updateDto.bannerImage;
+    if (updateDto.bannerImage !== undefined) dataToUpdate.bannerImage = updateDto.bannerImage || null;
     if (updateDto.categoryId !== undefined) {
       dataToUpdate.category = updateDto.categoryId
         ? { connect: { id: updateDto.categoryId } }
@@ -404,6 +442,7 @@ export class EventsService {
         : { disconnect: true };
     }
     if (updateDto.status) dataToUpdate.status = updateDto.status;
+    if (updateDto.pricingType) dataToUpdate.pricingType = updateDto.pricingType;
 
     const start = new Date(
       updateDto.startDatetime || existing.data.startDatetime,

@@ -16,6 +16,7 @@ import { EventSessionsModule } from './modules/event-sessions/event-sessions.mod
 import { TicketTypesModule } from './modules/ticket-types/ticket-types.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { PromoCodesModule } from './modules/promo-codes/promos-codes.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     SpeakersModule,
     EventSessionsModule,
     TicketTypesModule,
+    PromoCodesModule
   ],
   controllers: [AppController],
   providers: [

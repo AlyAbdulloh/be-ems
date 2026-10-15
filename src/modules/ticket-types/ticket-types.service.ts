@@ -6,8 +6,7 @@ import {
 } from '@nestjs/common';
 import { EmsPrismaService } from '../../prisma/ems-prisma.service';
 import { CreateTicketTypeDto, UpdateTicketTypeDto } from './dto/create-ticket-type.dto';
-import { OrganizerStatus } from '@internal/prisma/ems';
-import { Prisma } from '@internal/prisma/ems';
+import { EventPricingType, OrganizerStatus, Prisma } from '@internal/prisma/ems';
 
 @Injectable()
 export class TicketTypesService {
@@ -98,11 +97,17 @@ export class TicketTypesService {
       throw new BadRequestException('Waktu mulai penjualan tiket harus lebih awal dari waktu berakhir');
     }
 
+    if (existingEvent.pricingType === EventPricingType.FREE && Number(createDto.price) !== 0) {
+      throw new BadRequestException('Harga tiket harus 0 karena event gratis');
+    }
+
+    const ticketPrice = existingEvent.pricingType === EventPricingType.FREE ? 0 : createDto.price;
+
     const ticketType = await this.emsDb.ticketType.create({
       data: {
         eventId: createDto.eventId,
         name: createDto.name,
-        price: new Prisma.Decimal(createDto.price),
+        price: new Prisma.Decimal(ticketPrice),
         quota: createDto.quota,
         saleStartDate,
         saleEndDate,
@@ -156,14 +161,28 @@ export class TicketTypesService {
       );
     }
 
+    if (
+      existingTicketType.event.pricingType === EventPricingType.FREE &&
+      updateDto.price !== undefined &&
+      Number(updateDto.price) !== 0
+    ) {
+      throw new BadRequestException('Harga tiket harus 0 karena event gratis');
+    }
+
+    let updatedPrice: Prisma.Decimal | undefined;
+    if (existingTicketType.event.pricingType === EventPricingType.FREE) {
+      updatedPrice = new Prisma.Decimal(0);
+    } else if (updateDto.price !== undefined) {
+      updatedPrice = new Prisma.Decimal(updateDto.price);
+    } else {
+      updatedPrice = existingTicketType.price;
+    }
+
     const updated = await this.emsDb.ticketType.update({
       where: { id },
       data: {
         name: updateDto.name !== undefined ? updateDto.name : existingTicketType.name,
-        price:
-          updateDto.price !== undefined
-            ? new Prisma.Decimal(updateDto.price)
-            : existingTicketType.price,
+        price: updatedPrice,
         quota: updateDto.quota !== undefined ? updateDto.quota : existingTicketType.quota,
         saleStartDate,
         saleEndDate,
