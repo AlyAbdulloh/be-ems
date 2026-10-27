@@ -2,10 +2,10 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
-} from '@nestjs/common';
-import { EmsPrismaService } from '../../prisma/ems-prisma.service';
-import { CreateEventCategoryDto } from './dto/create-event-category.dto';
-import { UpdateEventCategoryDto } from './dto/update-event-category.dto';
+} from "@nestjs/common";
+import { EmsPrismaService } from "../../prisma/ems-prisma.service";
+import { CreateEventCategoryDto } from "./dto/create-event-category.dto";
+import { UpdateEventCategoryDto } from "./dto/update-event-category.dto";
 
 @Injectable()
 export class EventCategoriesService {
@@ -33,18 +33,18 @@ export class EventCategoriesService {
     });
 
     return {
-      message: 'Event category created successfully',
+      message: "Event category created successfully",
       data: category,
     };
   }
 
   async findAll() {
     const categories = await this.categoryModel.findMany({
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
 
     return {
-      message: 'Event categories fetched successfully',
+      message: "Event categories fetched successfully",
       data: categories,
     };
   }
@@ -59,7 +59,7 @@ export class EventCategoriesService {
     }
 
     return {
-      message: 'Event category fetched successfully',
+      message: "Event category fetched successfully",
       data: category,
     };
   }
@@ -84,7 +84,7 @@ export class EventCategoriesService {
     });
 
     return {
-      message: 'Event category updated successfully',
+      message: "Event category updated successfully",
       data: updatedCategory,
     };
   }
@@ -97,7 +97,7 @@ export class EventCategoriesService {
     });
 
     return {
-      message: 'Event category deleted successfully',
+      message: "Event category deleted successfully",
     };
   }
 }

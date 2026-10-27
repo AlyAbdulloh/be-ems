@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { EmsPrismaService } from '../../prisma/ems-prisma.service';
-import { CreateSpeakerDto, UpdateSpeakerDto } from './dto/create-speaker.dto';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { Prisma } from "@internal/prisma/ems";
+import { EmsPrismaService } from "../../prisma/ems-prisma.service";
+import { CreateSpeakerDto, UpdateSpeakerDto } from "./dto/create-speaker.dto";
 
 @Injectable()
 export class SpeakersService {
@@ -11,21 +12,21 @@ export class SpeakersService {
   }
 
   async findAll(search?: string) {
-    const where: any = {};
+    const where: Prisma.SpeakerWhereInput = {};
     if (search) {
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { company: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search, mode: "insensitive" } },
+        { company: { contains: search, mode: "insensitive" } },
       ];
     }
 
     const items = await this.speakerModel.findMany({
       where,
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
 
     return {
-      message: 'Speakers fetched successfully',
+      message: "Speakers fetched successfully",
       data: items,
     };
   }
@@ -40,7 +41,7 @@ export class SpeakersService {
     }
 
     return {
-      message: 'Speaker fetched successfully',
+      message: "Speaker fetched successfully",
       data: speaker,
     };
   }
@@ -51,7 +52,7 @@ export class SpeakersService {
     });
 
     return {
-      message: 'Speaker created successfully',
+      message: "Speaker created successfully",
       data: speaker,
     };
   }
@@ -65,7 +66,7 @@ export class SpeakersService {
     });
 
     return {
-      message: 'Speaker updated successfully',
+      message: "Speaker updated successfully",
       data: updated,
     };
   }
@@ -78,7 +79,7 @@ export class SpeakersService {
     });
 
     return {
-      message: 'Speaker deleted successfully',
+      message: "Speaker deleted successfully",
     };
   }
 }

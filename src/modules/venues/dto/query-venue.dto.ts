@@ -1,7 +1,6 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
-import { VenueType } from '@internal/prisma/ems';
+import { ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { IsInt, IsOptional, IsString, Min } from "class-validator";
 
 export class QueryVenueDto {
   @ApiPropertyOptional({ default: 1, minimum: 1 })
@@ -18,17 +17,12 @@ export class QueryVenueDto {
   @Min(1)
   limit?: number = 10;
 
-  @ApiPropertyOptional({ description: 'Filter by city' })
+  @ApiPropertyOptional({ description: "Filter by city" })
   @IsOptional()
   @IsString()
   city?: string;
 
-  @ApiPropertyOptional({ enum: VenueType })
-  @IsOptional()
-  @IsEnum(VenueType)
-  type?: VenueType;
-
-  @ApiPropertyOptional({ description: 'Search keyword for name or address' })
+  @ApiPropertyOptional({ description: "Search keyword for name or address" })
   @IsOptional()
   @IsString()
   search?: string;

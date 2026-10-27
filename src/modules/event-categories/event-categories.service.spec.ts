@@ -1,15 +1,14 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { EventCategoriesService } from './event-categories.service';
-import { EmsPrismaService } from '../../prisma/ems-prisma.service';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { Test, TestingModule } from "@nestjs/testing";
+import { EventCategoriesService } from "./event-categories.service";
+import { EmsPrismaService } from "../../prisma/ems-prisma.service";
+import { ConflictException, NotFoundException } from "@nestjs/common";
 
-describe('EventCategoriesService', () => {
+describe("EventCategoriesService", () => {
   let service: EventCategoriesService;
-  let prisma: EmsPrismaService;
 
   const mockCategory = {
-    id: 'category-uuid-1',
-    name: 'Music',
+    id: "category-uuid-1",
+    name: "Music",
   };
 
   const mockPrismaService = {
@@ -34,36 +33,39 @@ describe('EventCategoriesService', () => {
     }).compile();
 
     service = module.get<EventCategoriesService>(EventCategoriesService);
-    prisma = module.get<EmsPrismaService>(EmsPrismaService);
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('create', () => {
-    it('should create category successfully', async () => {
+  describe("create", () => {
+    it("should create category successfully", async () => {
       mockPrismaService.eventCategory.findUnique.mockResolvedValue(null);
       mockPrismaService.eventCategory.create.mockResolvedValue(mockCategory);
 
-      const result = await service.create({ name: 'Music' });
+      const result = await service.create({ name: "Music" });
 
-      expect(result.data.name).toBe('Music');
+      expect(result.data.name).toBe("Music");
     });
 
-    it('should throw ConflictException if category name exists', async () => {
-      mockPrismaService.eventCategory.findUnique.mockResolvedValue(mockCategory);
+    it("should throw ConflictException if category name exists", async () => {
+      mockPrismaService.eventCategory.findUnique.mockResolvedValue(
+        mockCategory,
+      );
 
-      await expect(service.create({ name: 'Music' })).rejects.toThrow(
+      await expect(service.create({ name: "Music" })).rejects.toThrow(
         ConflictException,
       );
     });
   });
 
-  describe('findAll', () => {
-    it('should return all categories', async () => {
-      mockPrismaService.eventCategory.findMany.mockResolvedValue([mockCategory]);
+  describe("findAll", () => {
+    it("should return all categories", async () => {
+      mockPrismaService.eventCategory.findMany.mockResolvedValue([
+        mockCategory,
+      ]);
 
       const result = await service.findAll();
 
@@ -71,19 +73,21 @@ describe('EventCategoriesService', () => {
     });
   });
 
-  describe('findOne', () => {
-    it('should return category by ID', async () => {
-      mockPrismaService.eventCategory.findUnique.mockResolvedValue(mockCategory);
+  describe("findOne", () => {
+    it("should return category by ID", async () => {
+      mockPrismaService.eventCategory.findUnique.mockResolvedValue(
+        mockCategory,
+      );
 
-      const result = await service.findOne('category-uuid-1');
+      const result = await service.findOne("category-uuid-1");
 
       expect(result.data).toEqual(mockCategory);
     });
 
-    it('should throw NotFoundException if category not found', async () => {
+    it("should throw NotFoundException if category not found", async () => {
       mockPrismaService.eventCategory.findUnique.mockResolvedValue(null);
 
-      await expect(service.findOne('invalid-id')).rejects.toThrow(
+      await expect(service.findOne("invalid-id")).rejects.toThrow(
         NotFoundException,
       );
     });

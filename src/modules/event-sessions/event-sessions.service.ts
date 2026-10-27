@@ -3,10 +3,13 @@ import {
   ForbiddenException,
   NotFoundException,
   BadRequestException,
-} from '@nestjs/common';
-import { EmsPrismaService } from '../../prisma/ems-prisma.service';
-import { CreateEventSessionDto, UpdateEventSessionDto } from './dto/create-event-session.dto';
-import { OrganizerStatus } from '@internal/prisma/ems';
+} from "@nestjs/common";
+import { EmsPrismaService } from "../../prisma/ems-prisma.service";
+import {
+  CreateEventSessionDto,
+  UpdateEventSessionDto,
+} from "./dto/create-event-session.dto";
+import { OrganizerStatus } from "@internal/prisma/ems";
 
 @Injectable()
 export class EventSessionsService {
@@ -19,7 +22,7 @@ export class EventSessionsService {
 
     if (!organizer || organizer.status !== OrganizerStatus.APPROVED) {
       throw new ForbiddenException(
-        'Only registered and approved organizers can manage event sessions',
+        "Only registered and approved organizers can manage event sessions",
       );
     }
 
@@ -50,11 +53,11 @@ export class EventSessionsService {
     const sessions = await this.emsDb.eventSession.findMany({
       where: { eventId },
       select: this.defaultSessionSelect,
-      orderBy: { startTime: 'asc' },
+      orderBy: { startTime: "asc" },
     });
 
     return {
-      message: 'Event sessions fetched successfully',
+      message: "Event sessions fetched successfully",
       data: sessions,
     };
   }
@@ -70,7 +73,7 @@ export class EventSessionsService {
     }
 
     return {
-      message: 'Session fetched successfully',
+      message: "Session fetched successfully",
       data: session,
     };
   }
@@ -82,18 +85,24 @@ export class EventSessionsService {
     });
 
     if (!existingEvent) {
-      throw new NotFoundException(`Event with ID ${createDto.eventId} not found`);
+      throw new NotFoundException(
+        `Event with ID ${createDto.eventId} not found`,
+      );
     }
 
     if (existingEvent.organizerId !== organizer.id) {
-      throw new ForbiddenException('You can only add sessions to events you own');
+      throw new ForbiddenException(
+        "You can only add sessions to events you own",
+      );
     }
 
     const startTime = new Date(createDto.startTime);
     const endTime = new Date(createDto.endTime);
 
     if (startTime >= endTime) {
-      throw new BadRequestException('Session start time must be earlier than end time');
+      throw new BadRequestException(
+        "Session start time must be earlier than end time",
+      );
     }
 
     if (createDto.speakerId) {
@@ -101,7 +110,9 @@ export class EventSessionsService {
         where: { id: createDto.speakerId },
       });
       if (!existingSpeaker) {
-        throw new NotFoundException(`Speaker with ID ${createDto.speakerId} not found`);
+        throw new NotFoundException(
+          `Speaker with ID ${createDto.speakerId} not found`,
+        );
       }
     }
 
@@ -119,7 +130,7 @@ export class EventSessionsService {
     });
 
     return {
-      message: 'Sesi event berhasil ditambahkan',
+      message: "Sesi event berhasil ditambahkan",
       data: session,
     };
   }
@@ -137,7 +148,9 @@ export class EventSessionsService {
     }
 
     if (existingSession.event.organizerId !== organizer.id) {
-      throw new ForbiddenException('You can only update sessions of events you own');
+      throw new ForbiddenException(
+        "You can only update sessions of events you own",
+      );
     }
 
     const startTime = updateDto.startTime
@@ -148,7 +161,9 @@ export class EventSessionsService {
       : existingSession.endTime;
 
     if (startTime >= endTime) {
-      throw new BadRequestException('Session start time must be earlier than end time');
+      throw new BadRequestException(
+        "Session start time must be earlier than end time",
+      );
     }
 
     if (updateDto.speakerId) {
@@ -156,25 +171,39 @@ export class EventSessionsService {
         where: { id: updateDto.speakerId },
       });
       if (!existingSpeaker) {
-        throw new NotFoundException(`Speaker with ID ${updateDto.speakerId} not found`);
+        throw new NotFoundException(
+          `Speaker with ID ${updateDto.speakerId} not found`,
+        );
       }
     }
 
     const updatedSession = await this.emsDb.eventSession.update({
       where: { id },
       data: {
-        title: updateDto.title !== undefined ? updateDto.title : existingSession.title,
-        description: updateDto.description !== undefined ? updateDto.description : existingSession.description,
+        title:
+          updateDto.title !== undefined
+            ? updateDto.title
+            : existingSession.title,
+        description:
+          updateDto.description !== undefined
+            ? updateDto.description
+            : existingSession.description,
         startTime,
         endTime,
-        roomOrTrack: updateDto.roomOrTrack !== undefined ? updateDto.roomOrTrack : existingSession.roomOrTrack,
-        speakerId: updateDto.speakerId !== undefined ? updateDto.speakerId : existingSession.speakerId,
+        roomOrTrack:
+          updateDto.roomOrTrack !== undefined
+            ? updateDto.roomOrTrack
+            : existingSession.roomOrTrack,
+        speakerId:
+          updateDto.speakerId !== undefined
+            ? updateDto.speakerId
+            : existingSession.speakerId,
       },
       select: this.defaultSessionSelect,
     });
 
     return {
-      message: 'Sesi event berhasil diperbarui',
+      message: "Sesi event berhasil diperbarui",
       data: updatedSession,
     };
   }
@@ -192,7 +221,9 @@ export class EventSessionsService {
     }
 
     if (existingSession.event.organizerId !== organizer.id) {
-      throw new ForbiddenException('You can only delete sessions of events you own');
+      throw new ForbiddenException(
+        "You can only delete sessions of events you own",
+      );
     }
 
     await this.emsDb.eventSession.delete({
@@ -200,7 +231,7 @@ export class EventSessionsService {
     });
 
     return {
-      message: 'Sesi event berhasil dihapus',
+      message: "Sesi event berhasil dihapus",
     };
   }
 }

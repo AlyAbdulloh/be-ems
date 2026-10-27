@@ -3,13 +3,13 @@ import {
   ConflictException,
   ForbiddenException,
   NotFoundException,
-} from '@nestjs/common';
-import { EmsPrismaService } from '../../prisma/ems-prisma.service';
-import { ApplyOrganizerDto } from './dto/apply-organizer.dto';
-import { UpdateOrganizerDto } from './dto/update-organizer.dto';
-import { UpdateOrganizerStatusDto } from './dto/update-organizer-status.dto';
-import { QueryOrganizerDto } from './dto/query-organizer.dto';
-import { OrganizerStatus, Prisma } from '@internal/prisma/ems';
+} from "@nestjs/common";
+import { EmsPrismaService } from "../../prisma/ems-prisma.service";
+import { ApplyOrganizerDto } from "./dto/apply-organizer.dto";
+import { UpdateOrganizerDto } from "./dto/update-organizer.dto";
+import { UpdateOrganizerStatusDto } from "./dto/update-organizer-status.dto";
+import { QueryOrganizerDto } from "./dto/query-organizer.dto";
+import { OrganizerStatus, Prisma } from "@internal/prisma/ems";
 
 @Injectable()
 export class OrganizersService {
@@ -43,12 +43,14 @@ export class OrganizersService {
     const adminRole = await this.emsDb.userRole.findFirst({
       where: {
         userId,
-        role: { name: 'ADMIN' },
+        role: { name: "ADMIN" },
       },
     });
 
     if (adminRole) {
-      throw new ForbiddenException('Admins cannot apply to become an organizer');
+      throw new ForbiddenException(
+        "Admins cannot apply to become an organizer",
+      );
     }
 
     const existingOrganizer = await this.organizerModel.findUnique({
@@ -58,12 +60,12 @@ export class OrganizersService {
     if (existingOrganizer) {
       if (existingOrganizer.status === OrganizerStatus.PENDING) {
         throw new ConflictException(
-          'You already have a pending organizer registration application',
+          "You already have a pending organizer registration application",
         );
       }
       if (existingOrganizer.status === OrganizerStatus.APPROVED) {
         throw new ConflictException(
-          'You are already registered and approved as an organizer',
+          "You are already registered and approved as an organizer",
         );
       }
       throw new ConflictException(
@@ -82,7 +84,7 @@ export class OrganizersService {
     });
 
     return {
-      message: 'Organizer application submitted successfully',
+      message: "Organizer application submitted successfully",
       data: organizer,
     };
   }
@@ -97,11 +99,11 @@ export class OrganizersService {
     });
 
     if (!organizer) {
-      throw new NotFoundException('Organizer profile not found for this user');
+      throw new NotFoundException("Organizer profile not found for this user");
     }
 
     return {
-      message: 'Organizer profile fetched successfully',
+      message: "Organizer profile fetched successfully",
       data: organizer,
     };
   }
@@ -127,7 +129,7 @@ export class OrganizersService {
     });
 
     return {
-      message: 'Organizer profile updated successfully',
+      message: "Organizer profile updated successfully",
       data: updatedOrganizer,
     };
   }
@@ -147,9 +149,9 @@ export class OrganizersService {
 
     if (search) {
       where.OR = [
-        { organizationName: { contains: search, mode: 'insensitive' } },
-        { user: { name: { contains: search, mode: 'insensitive' } } },
-        { user: { email: { contains: search, mode: 'insensitive' } } },
+        { organizationName: { contains: search, mode: "insensitive" } },
+        { user: { name: { contains: search, mode: "insensitive" } } },
+        { user: { email: { contains: search, mode: "insensitive" } } },
       ];
     }
 
@@ -161,7 +163,7 @@ export class OrganizersService {
         take: limit,
         select: this.defaultSelect,
         orderBy: {
-          createdAt: 'desc',
+          createdAt: "desc",
         },
       }),
     ]);
@@ -169,7 +171,7 @@ export class OrganizersService {
     const totalPages = Math.ceil(total / limit);
 
     return {
-      message: 'Organizers fetched successfully',
+      message: "Organizers fetched successfully",
       data: items,
       meta: {
         total,
@@ -194,7 +196,7 @@ export class OrganizersService {
     }
 
     return {
-      message: 'Organizer fetched successfully',
+      message: "Organizer fetched successfully",
       data: organizer,
     };
   }

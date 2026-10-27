@@ -3,17 +3,26 @@ import {
   ExecutionContext,
   Injectable,
   UnauthorizedException,
-} from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { JwtService } from '@nestjs/jwt';
-import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { Reflector } from "@nestjs/core";
+import { JwtService } from "@nestjs/jwt";
+import { Request } from "express";
+import { IS_PUBLIC_KEY } from "../decorators/public.decorator";
+import type { AuthenticatedUser } from "../interfaces/authenticated-user.interface";
+
+type RequestWithAuth = Request & {
+  user?: AuthenticatedUser;
+  cookies?: Record<string, string>;
+};
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
-    private jwtService: JwtService,
-    private reflector: Reflector,
-  ) { }
+    private readonly jwtService: JwtService,
+    private readonly reflector: Reflector,
+    private readonly configService: ConfigService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -24,36 +33,36 @@ export class JwtAuthGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<RequestWithAuth>();
     const token = this.extractTokenFromHeader(request);
     if (!token) {
-      throw new UnauthorizedException('Missing authentication token');
+      throw new UnauthorizedException("Missing authentication token");
     }
+
     try {
-      const payload = await this.jwtService.verifyAsync(token, {
-        secret: process.env.JWT_SECRET,
-      });
-      // Attach user to request object
-      request['user'] = payload;
+      const payload = await this.jwtService.verifyAsync<AuthenticatedUser>(
+        token,
+        {
+          secret: this.configService.get<string>("JWT_SECRET"),
+        },
+      );
+      request.user = payload;
     } catch {
-      throw new UnauthorizedException('Invalid or expired authentication token');
+      throw new UnauthorizedException(
+        "Invalid or expired authentication token",
+      );
     }
+
     return true;
   }
 
-  private extractTokenFromHeader(request: any): string | undefined {
-    // 1. Try to extract from Authorization Bearer header
-    const [type, token] = request.headers.authorization?.split(' ') ?? [];
-    if (type === 'Bearer') {
+  private extractTokenFromHeader(request: RequestWithAuth): string | undefined {
+    const [type, token] = request.headers.authorization?.split(" ") ?? [];
+    if (type === "Bearer") {
       return token;
     }
 
-    // 2. Try to extract from cookies
-    if (request.cookies && request.cookies['access_token']) {
-      console.log("token dari cookie", request.cookies['access_token'])
-      return request.cookies['access_token'];
-    }
-
-    return undefined;
+    const cookies = request.cookies as Record<string, string> | undefined;
+    return cookies?.["access_token"];
   }
 }

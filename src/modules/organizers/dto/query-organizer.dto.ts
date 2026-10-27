@@ -1,11 +1,11 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
-import { Type } from 'class-transformer';
-import { OrganizerStatus } from '@internal/prisma/ems';
+import { ApiPropertyOptional } from "@nestjs/swagger";
+import { IsEnum, IsInt, IsOptional, IsString, Min } from "class-validator";
+import { Type } from "class-transformer";
+import { OrganizerStatus } from "@internal/prisma/ems";
 
 export class QueryOrganizerDto {
   @ApiPropertyOptional({
-    description: 'Page number for pagination',
+    description: "Page number for pagination",
     default: 1,
     minimum: 1,
   })
@@ -16,7 +16,7 @@ export class QueryOrganizerDto {
   page?: number = 1;
 
   @ApiPropertyOptional({
-    description: 'Number of items per page',
+    description: "Number of items per page",
     default: 10,
     minimum: 1,
   })
@@ -27,7 +27,7 @@ export class QueryOrganizerDto {
   limit?: number = 10;
 
   @ApiPropertyOptional({
-    description: 'Filter by organizer verification status',
+    description: "Filter by organizer verification status",
     enum: OrganizerStatus,
   })
   @IsOptional()
@@ -35,7 +35,7 @@ export class QueryOrganizerDto {
   status?: OrganizerStatus;
 
   @ApiPropertyOptional({
-    description: 'Search string for organization name',
+    description: "Search string for organization name",
   })
   @IsOptional()
   @IsString()

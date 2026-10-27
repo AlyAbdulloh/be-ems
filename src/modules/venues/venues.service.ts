@@ -1,9 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { EmsPrismaService } from '../../prisma/ems-prisma.service';
-import { CreateVenueDto } from './dto/create-venue.dto';
-import { UpdateVenueDto } from './dto/update-venue.dto';
-import { QueryVenueDto } from './dto/query-venue.dto';
-import { Prisma } from '@internal/prisma/ems';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { EmsPrismaService } from "../../prisma/ems-prisma.service";
+import { CreateVenueDto } from "./dto/create-venue.dto";
+import { UpdateVenueDto } from "./dto/update-venue.dto";
+import { QueryVenueDto } from "./dto/query-venue.dto";
+import { Prisma } from "@internal/prisma/ems";
 
 @Injectable()
 export class VenuesService {
@@ -22,36 +22,31 @@ export class VenuesService {
         capacity: createDto.capacity,
         latitude: createDto.latitude,
         longitude: createDto.longitude,
-        type: createDto.type,
         meetingUrl: createDto.meetingUrl,
       },
     });
 
     return {
-      message: 'Venue created successfully',
+      message: "Venue created successfully",
       data: venue,
     };
   }
 
   async findAll(query: QueryVenueDto) {
-    const { page = 1, limit = 10, city, type, search } = query;
+    const { page = 1, limit = 10, city, search } = query;
     const skip = (page - 1) * limit;
 
     const where: Prisma.VenueWhereInput = {};
 
     if (city) {
-      where.city = { contains: city, mode: 'insensitive' };
-    }
-
-    if (type) {
-      where.type = type;
+      where.city = { contains: city, mode: "insensitive" };
     }
 
     if (search) {
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { address: { contains: search, mode: 'insensitive' } },
-        { city: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search, mode: "insensitive" } },
+        { address: { contains: search, mode: "insensitive" } },
+        { city: { contains: search, mode: "insensitive" } },
       ];
     }
 
@@ -61,14 +56,14 @@ export class VenuesService {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
       }),
     ]);
 
     const totalPages = Math.ceil(total / limit);
 
     return {
-      message: 'Venues fetched successfully',
+      message: "Venues fetched successfully",
       data: items,
       meta: {
         total,
@@ -89,7 +84,7 @@ export class VenuesService {
     }
 
     return {
-      message: 'Venue fetched successfully',
+      message: "Venue fetched successfully",
       data: venue,
     };
   }
@@ -103,7 +98,7 @@ export class VenuesService {
     });
 
     return {
-      message: 'Venue updated successfully',
+      message: "Venue updated successfully",
       data: updatedVenue,
     };
   }
@@ -116,7 +111,7 @@ export class VenuesService {
     });
 
     return {
-      message: 'Venue deleted successfully',
+      message: "Venue deleted successfully",
     };
   }
 }

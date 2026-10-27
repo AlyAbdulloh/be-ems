@@ -1,211 +1,307 @@
 import {
-    Injectable,
-    NotFoundException,
-    BadRequestException,
-} from '@nestjs/common';
-import { EmsPrismaService } from '../../prisma/ems-prisma.service';
-import { CreatePromoCodeDto, UpdatePromoCodeDto, CheckPromoCodeDto } from './dto/create-promo-codes';
-import { EventPricingType, Prisma } from '@internal/prisma/ems';
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from "@nestjs/common";
+import { EmsPrismaService } from "../../prisma/ems-prisma.service";
+import {
+  CreatePromoCodeDto,
+  UpdatePromoCodeDto,
+  CheckPromoCodeDto,
+} from "./dto/create-promo-codes";
+import {
+  DiscountType,
+  EventPricingType,
+  OrganizerStatus,
+  Prisma,
+} from "@internal/prisma/ems";
+
+const PROMO_CODE_SELECT = {
+  id: true,
+  eventId: true,
+  code: true,
+  discountType: true,
+  discountValue: true,
+  validFrom: true,
+  validUntil: true,
+  maxUsage: true,
+  usedCount: true,
+} as const;
 
 @Injectable()
 export class PromoCodesService {
-    constructor(private readonly emsDb: EmsPrismaService) { }
+  constructor(private readonly emsDb: EmsPrismaService) {}
 
-    async create(createDto: CreatePromoCodeDto) {
+  private normaliseCode(code: string): string {
+    return code.trim().toUpperCase();
+  }
 
-        const existingEvent = await this.emsDb.event.findUnique({
-            where: { id: createDto.eventId },
-        });
+  /**
+   * Ensure the current user is an approved organizer that owns the event.
+   */
+  private async assertEventOwnership(userId: string, eventId: string) {
+    const event = await this.emsDb.event.findFirst({
+      where: { id: eventId, deletedAt: null },
+      select: {
+        id: true,
+        pricingType: true,
+        organizer: {
+          select: {
+            userId: true,
+            status: true,
+          },
+        },
+      },
+    });
 
-        if (!existingEvent) {
-            throw new NotFoundException(`Event dengan ID ${createDto.eventId} tidak ditemukan`);
-        }
-
-        if (existingEvent.pricingType === EventPricingType.FREE) {
-            throw new BadRequestException('Event gratis tidak dapat menambahkan kode promo');
-        }
-
-        // cek apakah kode promo sudah ada pada event ini
-        const existingPromoCode = await this.emsDb.promoCode.findFirst({
-            where: { code: createDto.code, eventId: createDto.eventId },
-        });
-
-        if (existingPromoCode) {
-            throw new BadRequestException('Kode promo sudah ada pada event ini');
-        }
-
-        let validFrom: Date | null = null;
-        let validUntil: Date | null = null;
-
-        if (createDto.validFrom) {
-            validFrom = new Date(createDto.validFrom);
-        }
-        if (createDto.validUntil) {
-            validUntil = new Date(createDto.validUntil);
-        }
-
-        if (validFrom && validUntil && validFrom >= validUntil) {
-            throw new BadRequestException('Waktu mulai promo harus lebih awal dari waktu berakhir');
-        }
-
-        const promoCode = await this.emsDb.promoCode.create({
-            data: {
-                eventId: createDto.eventId,
-                code: createDto.code,
-                discountValue: new Prisma.Decimal(createDto.discountValue),
-                discountType: createDto.discountType,
-                maxUsage: createDto.maxUsage,
-                validFrom,
-                validUntil,
-            },
-        });
-
-        return {
-            message: 'Kode promo berhasil ditambahkan',
-            data: promoCode,
-        };
+    if (!event) {
+      throw new NotFoundException(`Event dengan ID ${eventId} tidak ditemukan`);
     }
 
-    async findByEventId(eventId: string) {
-        const promoCodes = await this.emsDb.promoCode.findMany({
-            where: {
-                eventId
-            },
-            select: {
-                id: true,
-                code: true,
-                discountType: true,
-                discountValue: true,
-                validFrom: true,
-                validUntil: true,
-                maxUsage: true,
-                usedCount: true,
-            }
-        });
-
-        return {
-            message: 'Berhasil mendapatkan data Promo Code',
-            data: promoCodes,
-        }
+    if (
+      event.organizer.userId !== userId ||
+      event.organizer.status !== OrganizerStatus.APPROVED
+    ) {
+      throw new ForbiddenException(
+        "Anda hanya dapat mengelola kode promo untuk event milik Anda",
+      );
     }
 
-    async update(id: string, updateDto: UpdatePromoCodeDto) {
-        // cek apakah kode promo ada
-        const existingPromoCode = await this.emsDb.promoCode.findUnique({
-            where: { id },
-        })
+    return event;
+  }
 
-        if (!existingPromoCode) {
-            throw new NotFoundException('Kode Promo tidak ditemukan');
-        }
+  private parseDate(value: string | undefined): Date | null | undefined {
+    if (value === undefined) {
+      return undefined;
+    }
+    return value ? new Date(value) : null;
+  }
 
-        const event = await this.emsDb.event.findUnique({
-            where: { id: updateDto.eventId || existingPromoCode.eventId },
-        });
+  private assertValidDateRange(
+    validFrom: Date | null | undefined,
+    validUntil: Date | null | undefined,
+  ): void {
+    if (validFrom && validUntil && validFrom >= validUntil) {
+      throw new BadRequestException(
+        "Waktu mulai promo harus lebih awal dari waktu berakhir",
+      );
+    }
+  }
 
-        if (event?.pricingType === EventPricingType.FREE) {
-            throw new BadRequestException('Event gratis tidak dapat menggunakan kode promo');
-        }
-
-        // cek apakah kode promo sudah pernah ditambahkan
-        const promoCode = await this.emsDb.promoCode.findFirst({
-            where: {
-                code: updateDto.code,
-                eventId: updateDto.eventId,
-                NOT: { id },
-            }
-        });
-
-        if (promoCode) {
-            throw new BadRequestException('Kode Promo sudah pernah ditambahkan pada event ini');
-        }
-
-        let validFrom: Date | null = null;
-        let validUntil: Date | null = null;
-
-        if (updateDto.validFrom) {
-            validFrom = new Date(updateDto.validFrom);
-        }
-        if (updateDto.validUntil) {
-            validUntil = new Date(updateDto.validUntil);
-        }
-
-        if (validFrom && validUntil && validFrom >= validUntil) {
-            throw new BadRequestException('Waktu mulai promo harus lebih awal dari waktu berakhir');
-        }
-
-        const updatedPromoCode = await this.emsDb.promoCode.update({
-            where: { id },
-            data: {
-                code: updateDto.code,
-                discountValue: new Prisma.Decimal(updateDto.discountValue),
-                discountType: updateDto.discountType,
-                maxUsage: updateDto.maxUsage,
-                validFrom,
-                validUntil,
-            },
-        });
-
-        return {
-            message: 'Kode Promo berhasil diperbarui',
-            data: updatedPromoCode,
-        };
+  private assertValidDiscount(
+    discountType: DiscountType,
+    discountValue: number,
+  ): void {
+    if (discountValue <= 0) {
+      throw new BadRequestException("Nilai diskon harus lebih besar dari 0");
     }
 
-    async checkkPromoCode(cekDto: CheckPromoCodeDto) {
-        let { eventId, code } = cekDto;
+    if (discountType === DiscountType.PERCENTAGE && discountValue > 100) {
+      throw new BadRequestException(
+        "Diskon persentase tidak boleh melebihi 100",
+      );
+    }
+  }
 
-        const promoCode = await this.emsDb.promoCode.findFirst({
-            where: {
-                code,
-                eventId,
-            },
-            select: {
-                id: true,
-                code: true,
-                discountType: true,
-                discountValue: true,
-                validFrom: true,
-                validUntil: true,
-                maxUsage: true,
-                usedCount: true
-            }
-        });
+  async create(userId: string, createDto: CreatePromoCodeDto) {
+    const event = await this.assertEventOwnership(userId, createDto.eventId);
 
-        if (!promoCode) {
-            throw new NotFoundException('Kode Promo tidak ditemukan');
-        }
-
-        if (promoCode.validFrom && promoCode.validUntil && new Date() >= promoCode.validUntil) {
-            throw new BadRequestException('Kode Promo tidak berlaku');
-        }
-
-        if (promoCode.maxUsage && promoCode.usedCount >= promoCode.maxUsage) {
-            throw new BadRequestException('Kode Promo sudah digunakan');
-        }
-
-        return {
-            message: 'Kode Promo berhasil ditemukan',
-            data: promoCode,
-        };
+    if (event.pricingType === EventPricingType.FREE) {
+      throw new BadRequestException(
+        "Event gratis tidak dapat menambahkan kode promo",
+      );
     }
 
-    async delete(id: string) {
-        // cek kode promo ada atau tidak
-        const promoCode = await this.emsDb.promoCode.findUnique({
-            where: { id },
-        });
+    const code = this.normaliseCode(createDto.code);
 
-        if (!promoCode) {
-            throw new NotFoundException('Kode Promo tidak ditemukan');
-        }
+    const existingPromoCode = await this.emsDb.promoCode.findUnique({
+      where: { eventId_code: { eventId: createDto.eventId, code } },
+    });
 
-        await this.emsDb.promoCode.delete({
-            where: { id },
-        });
-
-        return {
-            message: 'Kode Promo berhasil dihapus',
-        };
+    if (existingPromoCode) {
+      throw new BadRequestException("Kode promo sudah ada pada event ini");
     }
+
+    const validFrom = this.parseDate(createDto.validFrom) ?? null;
+    const validUntil = this.parseDate(createDto.validUntil) ?? null;
+    this.assertValidDateRange(validFrom, validUntil);
+
+    const discountType = createDto.discountType ?? DiscountType.PERCENTAGE;
+    this.assertValidDiscount(discountType, createDto.discountValue);
+
+    if (createDto.maxUsage !== undefined && createDto.maxUsage < 1) {
+      throw new BadRequestException("Maksimal penggunaan minimal 1");
+    }
+
+    const promoCode = await this.emsDb.promoCode.create({
+      data: {
+        eventId: createDto.eventId,
+        code,
+        discountValue: new Prisma.Decimal(createDto.discountValue),
+        discountType,
+        maxUsage: createDto.maxUsage,
+        validFrom,
+        validUntil,
+      },
+      select: PROMO_CODE_SELECT,
+    });
+
+    return {
+      message: "Kode promo berhasil ditambahkan",
+      data: promoCode,
+    };
+  }
+
+  async findByEventId(userId: string, eventId: string) {
+    await this.assertEventOwnership(userId, eventId);
+
+    const promoCodes = await this.emsDb.promoCode.findMany({
+      where: { eventId },
+      select: PROMO_CODE_SELECT,
+      orderBy: { code: "asc" },
+    });
+
+    return {
+      message: "Berhasil mendapatkan data Promo Code",
+      data: promoCodes,
+    };
+  }
+
+  async update(userId: string, id: string, updateDto: UpdatePromoCodeDto) {
+    const existingPromoCode = await this.emsDb.promoCode.findUnique({
+      where: { id },
+    });
+
+    if (!existingPromoCode) {
+      throw new NotFoundException("Kode Promo tidak ditemukan");
+    }
+
+    await this.assertEventOwnership(userId, existingPromoCode.eventId);
+
+    const code =
+      updateDto.code !== undefined
+        ? this.normaliseCode(updateDto.code)
+        : existingPromoCode.code;
+
+    const duplicate = await this.emsDb.promoCode.findUnique({
+      where: {
+        eventId_code: { eventId: existingPromoCode.eventId, code },
+      },
+    });
+
+    if (duplicate && duplicate.id !== id) {
+      throw new BadRequestException(
+        "Kode Promo sudah pernah ditambahkan pada event ini",
+      );
+    }
+
+    const validFrom =
+      updateDto.validFrom !== undefined
+        ? this.parseDate(updateDto.validFrom)
+        : existingPromoCode.validFrom;
+    const validUntil =
+      updateDto.validUntil !== undefined
+        ? this.parseDate(updateDto.validUntil)
+        : existingPromoCode.validUntil;
+    this.assertValidDateRange(validFrom, validUntil);
+
+    const discountType =
+      updateDto.discountType ?? existingPromoCode.discountType;
+    const discountValue =
+      updateDto.discountValue ?? existingPromoCode.discountValue.toNumber();
+    this.assertValidDiscount(discountType, discountValue);
+
+    const maxUsage =
+      updateDto.maxUsage !== undefined
+        ? updateDto.maxUsage
+        : existingPromoCode.maxUsage;
+
+    if (maxUsage !== null && maxUsage < existingPromoCode.usedCount) {
+      throw new BadRequestException(
+        `Maksimal penggunaan tidak boleh lebih kecil dari jumlah penggunaan saat ini (${existingPromoCode.usedCount})`,
+      );
+    }
+
+    const updatedPromoCode = await this.emsDb.promoCode.update({
+      where: { id },
+      data: {
+        code,
+        discountValue: new Prisma.Decimal(discountValue),
+        discountType,
+        maxUsage,
+        validFrom,
+        validUntil,
+      },
+      select: PROMO_CODE_SELECT,
+    });
+
+    return {
+      message: "Kode Promo berhasil diperbarui",
+      data: updatedPromoCode,
+    };
+  }
+
+  async checkPromoCode(cekDto: CheckPromoCodeDto) {
+    const code = this.normaliseCode(cekDto.code);
+
+    const promoCode = await this.emsDb.promoCode.findUnique({
+      where: {
+        eventId_code: { eventId: cekDto.eventId, code },
+      },
+      select: PROMO_CODE_SELECT,
+    });
+
+    if (!promoCode) {
+      throw new NotFoundException("Kode Promo tidak ditemukan");
+    }
+
+    const now = new Date();
+
+    if (promoCode.validFrom && now < promoCode.validFrom) {
+      throw new BadRequestException("Kode Promo belum berlaku");
+    }
+
+    if (promoCode.validUntil && now >= promoCode.validUntil) {
+      throw new BadRequestException("Kode Promo tidak berlaku");
+    }
+
+    if (
+      promoCode.maxUsage !== null &&
+      promoCode.usedCount >= promoCode.maxUsage
+    ) {
+      throw new BadRequestException("Kode Promo sudah digunakan");
+    }
+
+    return {
+      message: "Kode Promo berhasil ditemukan",
+      data: promoCode,
+    };
+  }
+
+  async delete(userId: string, id: string) {
+    const promoCode = await this.emsDb.promoCode.findUnique({
+      where: { id },
+    });
+
+    if (!promoCode) {
+      throw new NotFoundException("Kode Promo tidak ditemukan");
+    }
+
+    await this.assertEventOwnership(userId, promoCode.eventId);
+
+    if (promoCode.usedCount > 0) {
+      throw new BadRequestException(
+        "Tidak dapat menghapus kode promo yang sudah pernah digunakan",
+      );
+    }
+
+    await this.emsDb.promoCode.delete({
+      where: { id },
+    });
+
+    return {
+      message: "Kode Promo berhasil dihapus",
+    };
+  }
 }

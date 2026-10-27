@@ -1,32 +1,39 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-import { TransformInterceptor } from './common/interceptors/transform.interceptor';
-import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { NestExpressApplication } from '@nestjs/platform-express';
-import { join } from 'path';
-import cookieParser from 'cookie-parser';
+import { NestFactory } from "@nestjs/core";
+import { ConfigService } from "@nestjs/config";
+import { AppModule } from "./app.module";
+import { ValidationPipe } from "@nestjs/common";
+import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
+import { TransformInterceptor } from "./common/interceptors/transform.interceptor";
+import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import { NestExpressApplication } from "@nestjs/platform-express";
+import { join } from "path";
+import cookieParser from "cookie-parser";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const configService = app.get(ConfigService);
 
   // Serve static uploaded assets (e.g. event banners)
-  app.useStaticAssets(join(process.cwd(), 'uploads'), {
-    prefix: '/uploads/',
+  app.useStaticAssets(join(process.cwd(), "uploads"), {
+    prefix: "/uploads/",
   });
 
   // Enable Cookie Parser
   app.use(cookieParser());
 
   // Set global prefix for all endpoints
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix("api");
 
-  // Enable CORS
+  // Enable CORS. Use a comma-separated allowlist in production.
+  const allowedOrigins = (configService.get<string>("CORS_ORIGINS") ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
   app.enableCors({
-    origin: true, // Dynamically reflects request origin to allow credentials (cookies)
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
     credentials: true,
   });
 
@@ -50,21 +57,22 @@ async function bootstrap() {
 
   // Swagger Documentation Setup
   const config = new DocumentBuilder()
-    .setTitle('Danain REST API Boilerplate')
-    .setDescription('Boilerplate documentation for authentication and user CRUD APIs')
-    .setVersion('1.0')
+    .setTitle("EMS REST API")
+    .setDescription("Event Management System API documentation")
+    .setVersion("1.0")
     .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document, {
+  SwaggerModule.setup("docs", app, document, {
     useGlobalPrefix: true,
   });
 
-  const port = process.env.PORT || 3000;
+  const port = Number(configService.get<string>("PORT") ?? 3000);
   await app.listen(port);
   console.log(`Application is running on: http://localhost:${port}`);
-  console.log(`Swagger documentation available at: http://localhost:${port}/api/docs`);
+  console.log(
+    `Swagger documentation available at: http://localhost:${port}/api/docs`,
+  );
 }
-bootstrap();
-
+void bootstrap();

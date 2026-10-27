@@ -1,27 +1,30 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { PrismaModule } from './prisma/prisma.module';
-import { AuthModule } from './auth/auth.module';
-import { UsersModule } from './modules/users/users.module';
-import { OrganizersModule } from './modules/organizers/organizers.module';
-import { HealthModule } from './modules/health/health.module';
-import { EventCategoriesModule } from './modules/event-categories/event-categories.module';
-import { VenuesModule } from './modules/venues/venues.module';
-import { EventsModule } from './modules/events/events.module';
-import { SpeakersModule } from './modules/speakers/speakers.module';
-import { EventSessionsModule } from './modules/event-sessions/event-sessions.module';
-import { TicketTypesModule } from './modules/ticket-types/ticket-types.module';
-import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
-import { RolesGuard } from './common/guards/roles.guard';
-import { PromoCodesModule } from './modules/promo-codes/promos-codes.module';
+import { Module } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
+import { APP_GUARD } from "@nestjs/core";
+import { AppController } from "./app.controller";
+import { AppService } from "./app.service";
+import { PrismaModule } from "./prisma/prisma.module";
+import { AuthModule } from "./auth/auth.module";
+import { UsersModule } from "./modules/users/users.module";
+import { OrganizersModule } from "./modules/organizers/organizers.module";
+import { HealthModule } from "./modules/health/health.module";
+import { EventCategoriesModule } from "./modules/event-categories/event-categories.module";
+import { VenuesModule } from "./modules/venues/venues.module";
+import { EventsModule } from "./modules/events/events.module";
+import { SpeakersModule } from "./modules/speakers/speakers.module";
+import { EventSessionsModule } from "./modules/event-sessions/event-sessions.module";
+import { TicketTypesModule } from "./modules/ticket-types/ticket-types.module";
+import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
+import { RolesGuard } from "./common/guards/roles.guard";
+import { PromoCodesModule } from "./modules/promo-codes/promos-codes.module";
+import { EventRegistrationModule } from "./modules/event-registration/event-registration.module";
+import { validateEnv } from "./config/env.validation";
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      validate: validateEnv,
     }),
     PrismaModule,
     AuthModule,
@@ -34,7 +37,8 @@ import { PromoCodesModule } from './modules/promo-codes/promos-codes.module';
     SpeakersModule,
     EventSessionsModule,
     TicketTypesModule,
-    PromoCodesModule
+    PromoCodesModule,
+    EventRegistrationModule,
   ],
   controllers: [AppController],
   providers: [
@@ -49,4 +53,4 @@ import { PromoCodesModule } from './modules/promo-codes/promos-codes.module';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

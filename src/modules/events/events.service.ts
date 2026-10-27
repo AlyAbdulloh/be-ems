@@ -4,18 +4,23 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
-} from '@nestjs/common';
-import { EmsPrismaService } from '../../prisma/ems-prisma.service';
-import { CreateEventDto } from './dto/create-event.dto';
-import { UpdateEventDto } from './dto/update-event.dto';
-import { QueryEventDto } from './dto/query-event.dto';
-import { UpdateEventStatusDto } from './dto/update-event-status.dto';
-import { CreateSessionDto, UpdateSessionDto } from './dto/create-session.dto';
-import { EventPricingType, EventStatus, OrganizerStatus, Prisma } from '@internal/prisma/ems';
+} from "@nestjs/common";
+import { EmsPrismaService } from "../../prisma/ems-prisma.service";
+import { CreateEventDto } from "./dto/create-event.dto";
+import { UpdateEventDto } from "./dto/update-event.dto";
+import { QueryEventDto } from "./dto/query-event.dto";
+import { UpdateEventStatusDto } from "./dto/update-event-status.dto";
+import {
+  EventPricingType,
+  EventStatus,
+  EventType,
+  OrganizerStatus,
+  Prisma,
+} from "@internal/prisma/ems";
 
 @Injectable()
 export class EventsService {
-  constructor(private readonly emsDb: EmsPrismaService) { }
+  constructor(private readonly emsDb: EmsPrismaService) {}
 
   get eventModel() {
     return this.emsDb.event;
@@ -38,6 +43,8 @@ export class EventsService {
     endDatetime: true,
     status: true,
     pricingType: true,
+    eventType: true,
+    meetingUrl: true,
     createdAt: true,
     updatedAt: true,
     organizer: {
@@ -76,7 +83,7 @@ export class EventsService {
           },
         },
       },
-      orderBy: { startTime: 'asc' as const },
+      orderBy: { startTime: "asc" as const },
     },
     ticketTypes: {
       select: {
@@ -91,7 +98,7 @@ export class EventsService {
         createdAt: true,
         updatedAt: true,
       },
-      orderBy: { price: 'asc' as const },
+      orderBy: { price: "asc" as const },
     },
   };
 
@@ -102,9 +109,9 @@ export class EventsService {
     const baseSlug = title
       .toLowerCase()
       .trim()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/[\s_-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+      .replace(/[^\w\s-]/g, "")
+      .replace(/[\s_-]+/g, "-")
+      .replace(/^-+|-+$/g, "");
     const randomSuffix = Math.random().toString(36).substring(2, 7);
     return `${baseSlug}-${randomSuffix}`;
   }
@@ -119,7 +126,7 @@ export class EventsService {
 
     if (!organizer || organizer.status !== OrganizerStatus.APPROVED) {
       throw new ForbiddenException(
-        'Only registered and approved organizers can create or manage events',
+        "Only registered and approved organizers can create or manage events",
       );
     }
 
@@ -157,8 +164,8 @@ export class EventsService {
     });
 
     if (overlappingEvent) {
-      const startStr = overlappingEvent.startDatetime.toLocaleString('id-ID');
-      const endStr = overlappingEvent.endDatetime.toLocaleString('id-ID');
+      const startStr = overlappingEvent.startDatetime.toLocaleString("id-ID");
+      const endStr = overlappingEvent.endDatetime.toLocaleString("id-ID");
       return {
         available: false,
         message: `Venue ini sudah dibooking untuk event "${overlappingEvent.title}" (${startStr} s/d ${endStr}). Silakan pilih venue atau rentang waktu lain.`,
@@ -168,7 +175,7 @@ export class EventsService {
 
     return {
       available: true,
-      message: 'Venue tersedia untuk rentang waktu tersebut.',
+      message: "Venue tersedia untuk rentang waktu tersebut.",
     };
   }
 
@@ -183,13 +190,19 @@ export class EventsService {
 
     if (startDate >= endDate) {
       throw new BadRequestException(
-        'Event start date/time must be earlier than end date/time',
+        "Event start date/time must be earlier than end date/time",
       );
     }
 
-    if (createDto.venueId) {
+    const eventType = createDto.eventType || EventType.OFFLINE;
+    const venueId =
+      eventType === EventType.ONLINE ? null : createDto.venueId || null;
+    const meetingUrl =
+      eventType === EventType.OFFLINE ? null : createDto.meetingUrl || null;
+
+    if (eventType !== EventType.ONLINE && venueId) {
       const availability = await this.checkVenueAvailabilityPublic(
-        createDto.venueId,
+        venueId,
         startDate,
         endDate,
       );
@@ -216,7 +229,7 @@ export class EventsService {
       data: {
         organizerId: organizer.id,
         categoryId: createDto.categoryId || null,
-        venueId: createDto.venueId || null,
+        venueId,
         title: createDto.title,
         slug,
         description: createDto.description,
@@ -225,12 +238,14 @@ export class EventsService {
         endDatetime: endDate,
         status: createDto.status || EventStatus.DRAFT,
         pricingType: createDto.pricingType || EventPricingType.FREE,
+        eventType,
+        meetingUrl,
       },
       select: this.defaultSelect,
     });
 
     return {
-      message: 'Event created successfully',
+      message: "Event created successfully",
       data: event,
     };
   }
@@ -241,7 +256,15 @@ export class EventsService {
   async findMyEvents(userId: string, query: QueryEventDto) {
     const organizer = await this.getApprovedOrganizer(userId);
 
-    const { page = 1, limit = 10, status, categoryId, search, pricingType } = query;
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      categoryId,
+      search,
+      pricingType,
+      eventType,
+    } = query;
     const skip = (page - 1) * limit;
 
     const where: Prisma.EventWhereInput = {
@@ -256,14 +279,18 @@ export class EventsService {
       where.pricingType = pricingType;
     }
 
+    if (eventType) {
+      where.eventType = eventType;
+    }
+
     if (categoryId) {
       where.categoryId = categoryId;
     }
 
     if (search) {
       where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
+        { title: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
       ];
     }
 
@@ -274,14 +301,14 @@ export class EventsService {
         skip,
         take: limit,
         select: this.defaultSelect,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
       }),
     ]);
 
     const totalPages = Math.ceil(total / limit);
 
     return {
-      message: 'Organizer events fetched successfully',
+      message: "Organizer events fetched successfully",
       data: items,
       meta: {
         total,
@@ -302,7 +329,7 @@ export class EventsService {
       status,
       categoryId,
       venueId,
-      venueType,
+      eventType,
       city,
       pricingType,
       search,
@@ -319,6 +346,10 @@ export class EventsService {
       where.pricingType = pricingType;
     }
 
+    if (eventType) {
+      where.eventType = eventType;
+    }
+
     if (categoryId) {
       where.categoryId = categoryId;
     }
@@ -327,28 +358,20 @@ export class EventsService {
       where.venueId = venueId;
     }
 
-    if (venueType) {
-      where.venue = {
-        ...(where.venue as any),
-        type: venueType,
-      };
-    }
-
     if (city) {
       where.venue = {
-        ...(where.venue as any),
         OR: [
-          { city: { contains: city, mode: 'insensitive' } },
-          { name: { contains: city, mode: 'insensitive' } },
-          { address: { contains: city, mode: 'insensitive' } },
+          { city: { contains: city, mode: "insensitive" } },
+          { name: { contains: city, mode: "insensitive" } },
+          { address: { contains: city, mode: "insensitive" } },
         ],
       };
     }
 
     if (search) {
       where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
+        { title: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
       ];
     }
 
@@ -359,14 +382,14 @@ export class EventsService {
         skip,
         take: limit,
         select: this.defaultSelect,
-        orderBy: { startDatetime: 'asc' },
+        orderBy: { startDatetime: "asc" },
       }),
     ]);
 
     const totalPages = Math.ceil(total / limit);
 
     return {
-      message: 'Events fetched successfully',
+      message: "Events fetched successfully",
       data: items,
       meta: {
         total,
@@ -391,7 +414,7 @@ export class EventsService {
     }
 
     return {
-      message: 'Event details fetched successfully',
+      message: "Event details fetched successfully",
       data: event,
     };
   }
@@ -410,7 +433,7 @@ export class EventsService {
     }
 
     return {
-      message: 'Event details fetched successfully',
+      message: "Event details fetched successfully",
       data: event,
     };
   }
@@ -423,26 +446,58 @@ export class EventsService {
     const existing = await this.findOne(id);
 
     if (existing.data.organizerId !== organizer.id) {
-      throw new ForbiddenException('You can only modify events you own');
+      throw new ForbiddenException("You can only modify events you own");
     }
 
     const dataToUpdate: Prisma.EventUpdateInput = {};
 
     if (updateDto.title) dataToUpdate.title = updateDto.title;
-    if (updateDto.description !== undefined) dataToUpdate.description = updateDto.description;
-    if (updateDto.bannerImage !== undefined) dataToUpdate.bannerImage = updateDto.bannerImage || null;
+    if (updateDto.description !== undefined)
+      dataToUpdate.description = updateDto.description;
+    if (updateDto.bannerImage !== undefined)
+      dataToUpdate.bannerImage = updateDto.bannerImage || null;
     if (updateDto.categoryId !== undefined) {
       dataToUpdate.category = updateDto.categoryId
         ? { connect: { id: updateDto.categoryId } }
         : { disconnect: true };
     }
-    if (updateDto.venueId !== undefined) {
-      dataToUpdate.venue = updateDto.venueId
-        ? { connect: { id: updateDto.venueId } }
-        : { disconnect: true };
-    }
     if (updateDto.status) dataToUpdate.status = updateDto.status;
     if (updateDto.pricingType) dataToUpdate.pricingType = updateDto.pricingType;
+
+    const targetEventType =
+      updateDto.eventType !== undefined
+        ? updateDto.eventType
+        : existing.data.eventType;
+
+    if (updateDto.eventType !== undefined) {
+      dataToUpdate.eventType = updateDto.eventType;
+    }
+
+    if (targetEventType === EventType.ONLINE) {
+      // Event Online tidak memerlukan venue fisik
+      dataToUpdate.venue = { disconnect: true };
+      if (updateDto.meetingUrl !== undefined) {
+        dataToUpdate.meetingUrl = updateDto.meetingUrl || null;
+      }
+    } else if (targetEventType === EventType.OFFLINE) {
+      // Event Offline tidak memerlukan link meeting online
+      dataToUpdate.meetingUrl = null;
+      if (updateDto.venueId !== undefined) {
+        dataToUpdate.venue = updateDto.venueId
+          ? { connect: { id: updateDto.venueId } }
+          : { disconnect: true };
+      }
+    } else if (targetEventType === EventType.HYBRID) {
+      // Event Hybrid memiliki venue dan link meeting online
+      if (updateDto.venueId !== undefined) {
+        dataToUpdate.venue = updateDto.venueId
+          ? { connect: { id: updateDto.venueId } }
+          : { disconnect: true };
+      }
+      if (updateDto.meetingUrl !== undefined) {
+        dataToUpdate.meetingUrl = updateDto.meetingUrl || null;
+      }
+    }
 
     const start = new Date(
       updateDto.startDatetime || existing.data.startDatetime,
@@ -451,15 +506,21 @@ export class EventsService {
 
     if (start >= end) {
       throw new BadRequestException(
-        'Event start date/time must be earlier than end date/time',
+        "Event start date/time must be earlier than end date/time",
       );
     }
 
     dataToUpdate.startDatetime = start;
     dataToUpdate.endDatetime = end;
 
-    const targetVenueId = updateDto.venueId !== undefined ? updateDto.venueId : existing.data.venueId;
-    if (targetVenueId) {
+    const targetVenueId =
+      targetEventType === EventType.ONLINE
+        ? null
+        : updateDto.venueId !== undefined
+          ? updateDto.venueId
+          : existing.data.venueId;
+
+    if (targetEventType !== EventType.ONLINE && targetVenueId) {
       const availability = await this.checkVenueAvailabilityPublic(
         targetVenueId,
         start,
@@ -478,7 +539,7 @@ export class EventsService {
     });
 
     return {
-      message: 'Event updated successfully',
+      message: "Event updated successfully",
       data: updatedEvent,
     };
   }
@@ -495,7 +556,7 @@ export class EventsService {
     const existing = await this.findOne(id);
 
     if (existing.data.organizerId !== organizer.id) {
-      throw new ForbiddenException('You can only modify events you own');
+      throw new ForbiddenException("You can only modify events you own");
     }
 
     const updatedEvent = await this.eventModel.update({

@@ -8,30 +8,33 @@ import {
   IsDateString,
   IsUUID,
   MaxLength,
-} from 'class-validator';
-import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+} from "class-validator";
+import { ApiProperty, ApiPropertyOptional, PartialType } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 
 export class CreateTicketTypeDto {
-  @ApiProperty({ description: 'ID Event', example: 'uuid-event' })
+  @ApiProperty({ description: "ID Event", example: "uuid-event" })
   @IsNotEmpty()
   @IsUUID()
   eventId: string;
 
-  @ApiProperty({ description: 'Nama Jenis Tiket', example: 'Early Bird / Regular / VIP' })
+  @ApiProperty({
+    description: "Nama Jenis Tiket",
+    example: "Early Bird / Regular / VIP",
+  })
   @IsNotEmpty()
   @IsString()
   @MaxLength(100)
   name: string;
 
-  @ApiProperty({ description: 'Harga Tiket (0 jika gratis)', example: 150000 })
+  @ApiProperty({ description: "Harga Tiket (0 jika gratis)", example: 150000 })
   @IsNotEmpty()
   @IsNumber()
   @Min(0)
   @Type(() => Number)
   price: number;
 
-  @ApiProperty({ description: 'Kuota Tiket', example: 100 })
+  @ApiProperty({ description: "Kuota Tiket", example: 100 })
   @IsNotEmpty()
   @IsInt()
   @Min(1)
@@ -39,16 +42,16 @@ export class CreateTicketTypeDto {
   quota: number;
 
   @ApiPropertyOptional({
-    description: 'Tanggal Mulai Penjualan (ISO String)',
-    example: '2026-09-01T00:00:00Z',
+    description: "Tanggal Mulai Penjualan (ISO String)",
+    example: "2026-09-01T00:00:00Z",
   })
   @IsOptional()
   @IsDateString()
   saleStartDate?: string;
 
   @ApiPropertyOptional({
-    description: 'Tanggal Selesai Penjualan (ISO String)',
-    example: '2026-09-20T23:59:59Z',
+    description: "Tanggal Selesai Penjualan (ISO String)",
+    example: "2026-09-20T23:59:59Z",
   })
   @IsOptional()
   @IsDateString()

@@ -13,6 +13,12 @@ datasource db {
   url      = env("EMS_DATABASE_URL")
 }
 
+enum EventType {
+  OFFLINE
+  ONLINE
+  HYBRID
+}
+
 enum RoleName {
   ADMIN
 }
@@ -33,12 +39,6 @@ enum RegistrationStatus {
   PENDING
   CONFIRMED
   CANCELLED
-}
-
-enum VenueType {
-  OFFLINE
-  ONLINE
-  HYBRID
 }
 
 enum EventStatus {
@@ -143,17 +143,16 @@ model Organizer {
 }
 
 model Venue {
-  id         String    @id @default(uuid()) @db.Uuid
-  name       String    @db.VarChar(150)
-  address    String?   @db.Text
-  city       String?   @db.VarChar(100)
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String   @db.VarChar(150)
+  address    String?  @db.Text
+  city       String?  @db.VarChar(100)
   capacity   Int?
   latitude   Float?
   longitude  Float?
-  type       VenueType @default(OFFLINE)
-  meetingUrl String?   @map("meeting_url") @db.VarChar(500)
-  createdAt  DateTime  @default(now()) @map("created_at")
-  updatedAt  DateTime  @updatedAt @map("updated_at")
+  meetingUrl String?  @map("meeting_url") @db.VarChar(500)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
   events Event[]
 
@@ -189,6 +188,8 @@ model Event {
   updatedAt     DateTime         @updatedAt @map("updated_at")
   deletedAt     DateTime?        @map("deleted_at")
   pricingType   EventPricingType @default(FREE) @map("pricing_type")
+  eventType     EventType        @default(OFFLINE) @map("event_type")
+  meetingUrl    String?          @map("meeting_url") @db.Text
 
   sessions      EventSession[]
   ticketTypes   TicketType[]
@@ -242,6 +243,7 @@ model EventRegistration {
   status    RegistrationStatus @default(PENDING)
   createdAt DateTime           @default(now()) @map("created_at")
   updatedAt DateTime           @updatedAt @map("updated_at")
+  tickets   Ticket[]
 
   @@unique([eventId, userId])
   @@index([userId])
@@ -300,6 +302,7 @@ model Order {
   status      OrderStatus @default(PENDING)
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt @map("updated_at")
+  expiresAt   DateTime?   @map("expires_at")
 
   items    OrderItem[]
   payments Payment[]
@@ -327,15 +330,17 @@ model OrderItem {
 }
 
 model Ticket {
-  id            String       @id @default(uuid()) @db.Uuid
-  orderItemId   String       @map("order_item_id") @db.Uuid
-  orderItem     OrderItem    @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
-  attendeeName  String       @map("attendee_name") @db.VarChar(100)
-  attendeeEmail String       @map("attendee_email") @db.VarChar(255)
-  qrCode        String       @unique @map("qr_code") @db.VarChar(255)
-  status        TicketStatus @default(VALID)
-  checkedInAt   DateTime?    @map("checked_in_at")
-  createdAt     DateTime     @default(now()) @map("created_at")
+  id             String            @id @default(uuid()) @db.Uuid
+  registrationId String            @map("registration_id") @db.Uuid
+  registration   EventRegistration @relation(fields: [registrationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  orderItemId    String            @map("order_item_id") @db.Uuid
+  orderItem      OrderItem         @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  attendeeName   String            @map("attendee_name") @db.VarChar(100)
+  attendeeEmail  String            @map("attendee_email") @db.VarChar(255)
+  qrCode         String            @unique @map("qr_code") @db.VarChar(255)
+  status         TicketStatus      @default(VALID)
+  checkedInAt    DateTime?         @map("checked_in_at")
+  createdAt      DateTime          @default(now()) @map("created_at")
 
   @@index([qrCode])
   @@index([status])

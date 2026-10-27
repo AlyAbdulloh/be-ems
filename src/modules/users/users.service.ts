@@ -2,16 +2,17 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
-} from '@nestjs/common';
-import { EmsPrismaService } from '../../prisma/ems-prisma.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { PaginationQueryDto } from './dto/pagination-query.dto';
-import * as bcrypt from 'bcrypt';
+} from "@nestjs/common";
+import { EmsPrismaService } from "../../prisma/ems-prisma.service";
+import { Prisma } from "@internal/prisma/ems";
+import { CreateUserDto } from "./dto/create-user.dto";
+import { UpdateUserDto } from "./dto/update-user.dto";
+import { PaginationQueryDto } from "./dto/pagination-query.dto";
+import * as bcrypt from "bcrypt";
 
 @Injectable()
 export class UsersService {
-  constructor(private emsDb: EmsPrismaService) { }
+  constructor(private emsDb: EmsPrismaService) {}
 
   get userModel() {
     return this.emsDb.user;
@@ -24,7 +25,7 @@ export class UsersService {
       where: { email },
     });
     if (existingUser) {
-      throw new ConflictException('Email address is already in use');
+      throw new ConflictException("Email address is already in use");
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -32,7 +33,7 @@ export class UsersService {
       data: {
         email,
         passwordHash: hashedPassword,
-        name: name || '',
+        name: name || "",
       },
       select: {
         id: true,
@@ -53,7 +54,7 @@ export class UsersService {
     });
 
     return {
-      message: 'User created successfully',
+      message: "User created successfully",
       data: user,
     };
   }
@@ -84,7 +85,7 @@ export class UsersService {
           updatedAt: true,
         },
         orderBy: {
-          createdAt: 'desc',
+          createdAt: "desc",
         },
       }),
     ]);
@@ -92,7 +93,7 @@ export class UsersService {
     const totalPages = Math.ceil(total / limit);
 
     return {
-      message: 'Users fetched successfully',
+      message: "Users fetched successfully",
       data: items,
       meta: {
         total,
@@ -129,7 +130,7 @@ export class UsersService {
     }
 
     return {
-      message: 'User fetched successfully',
+      message: "User fetched successfully",
       data: user,
     };
   }
@@ -147,11 +148,11 @@ export class UsersService {
         },
       });
       if (existingUser) {
-        throw new ConflictException('Email address is already in use');
+        throw new ConflictException("Email address is already in use");
       }
     }
 
-    const dataToUpdate: any = {};
+    const dataToUpdate: Prisma.UserUpdateInput = {};
     if (name) dataToUpdate.name = name;
     if (email) dataToUpdate.email = email;
     if (password) {
@@ -180,7 +181,7 @@ export class UsersService {
     });
 
     return {
-      message: 'User updated successfully',
+      message: "User updated successfully",
       data: user,
     };
   }
@@ -193,8 +194,7 @@ export class UsersService {
     });
 
     return {
-      message: 'User deleted successfully',
+      message: "User deleted successfully",
     };
   }
 }
-

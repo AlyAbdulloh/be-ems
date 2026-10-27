@@ -4,9 +4,9 @@ import { PromoCodesService } from "./promo-codes.service";
 import { PrismaModule } from "src/prisma/prisma.module";
 
 @Module({
-    imports: [PrismaModule],
-    controllers: [PromoCodesController],
-    providers: [PromoCodesService],
-    exports: [PromoCodesService],
+  imports: [PrismaModule],
+  controllers: [PromoCodesController],
+  providers: [PromoCodesService],
+  exports: [PromoCodesService],
 })
-export class PromoCodesModule { }
+export class PromoCodesModule {}
