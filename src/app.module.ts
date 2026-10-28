@@ -18,6 +18,7 @@ import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 import { RolesGuard } from "./common/guards/roles.guard";
 import { PromoCodesModule } from "./modules/promo-codes/promos-codes.module";
 import { EventRegistrationModule } from "./modules/event-registration/event-registration.module";
+import { OrdersModule } from "./modules/orders/orders.module";
 import { validateEnv } from "./config/env.validation";
 
 @Module({
@@ -39,6 +40,7 @@ import { validateEnv } from "./config/env.validation";
     TicketTypesModule,
     PromoCodesModule,
     EventRegistrationModule,
+    OrdersModule,
   ],
   controllers: [AppController],
   providers: [

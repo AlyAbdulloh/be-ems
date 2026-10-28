@@ -11,7 +11,7 @@ import {
   Min,
   ValidateNested,
 } from "class-validator";
-import { Type } from "class-transformer";
+import { Type, Transform } from "class-transformer";
 import {
   RegistrationStatus,
   EventPricingType,
@@ -123,6 +123,7 @@ export class PromoCodeDataDto {
   })
   @IsOptional()
   @IsNumber()
+  @Transform(({ value }) => Number(value))
   discountValue?: number;
 }
 
